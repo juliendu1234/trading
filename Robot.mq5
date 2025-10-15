@@ -30,6 +30,8 @@ void DrawVirtualTP();
 void CheckCloseOnCandleIfProfit();
 double ComputeBuyTPPrice();
 double ComputeSellTPPrice();
+bool CanAffordNextTrade(double currentPrice, double lotSize);
+int CountOpenTrades();
 
 //+---------------------+
 //| Paramétres externes |
@@ -115,6 +117,9 @@ input bool   BackTestMode                      = true;          // Mode BackTest
 input double MaxAccountBalance                 = 1000.0;          // Solde maximum du compte (€)
 input double BackTestStopThreshold             = -1000.0;         // Arrêt du BackTest après perte en €
 input int    BackTestSpread                    = 10;              // Spread personnalisé
+
+input string Section_Security                  = "===== Paramètres Sécurité =====";
+input double ZeroRiskPrice                     = 0.0;            // Prix point 0 (0 = auto, active si > 0)
 
 //+--------------------+
 //| Variables globales |
@@ -1343,6 +1348,82 @@ void ManagePendingOrders()
    }
 }
 
+//+------------------------------------------------------------------+
+//| CountOpenTrades : Compte le nombre total de trades ouverts       |
+//+------------------------------------------------------------------+
+int CountOpenTrades()
+{
+   int count = 0;
+   for(int i = PositionsTotal()-1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(PositionSelectByTicket(ticket))
+      {
+         if(PositionGetInteger(POSITION_MAGIC)==MagicNumber &&
+            PositionGetString(POSITION_SYMBOL)==_Symbol)
+         {
+            count++;
+         }
+      }
+   }
+   return count;
+}
+
+//+------------------------------------------------------------------+
+//| CanAffordNextTrade : Vérifie si le capital fixe permet un trade  |
+//| Contrôle que tous les trades + le nouveau ne dépassent pas le    |
+//| capital fixe au point 0. Utilise MaxAccountBalance comme capital |
+//+------------------------------------------------------------------+
+bool CanAffordNextTrade(double currentPrice, double lotSize)
+{
+   // Si ZeroRiskPrice est <= 0, la sécurité est désactivée
+   if(ZeroRiskPrice <= 0)
+      return true;
+   
+   // Calcul du prix effectif du point 0
+   double effectiveZeroPrice = ZeroRiskPrice;
+   if(currentPrice <= effectiveZeroPrice)
+      return false;
+   
+   // Récupération de la taille du contrat
+   double contractSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_CONTRACT_SIZE);
+   if(contractSize <= 0)
+      contractSize = 1.0;
+   
+   // Calcul du coût total si le prix descend au point 0
+   double totalCostIfZero = 0.0;
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(ticket > 0 && PositionSelectByTicket(ticket))
+      {
+         if(PositionGetString(POSITION_SYMBOL) == _Symbol && 
+            PositionGetInteger(POSITION_MAGIC) == MagicNumber)
+         {
+            double openPrice = PositionGetDouble(POSITION_PRICE_OPEN);
+            double volume = PositionGetDouble(POSITION_VOLUME);
+            double cost = volume * contractSize * (openPrice - effectiveZeroPrice);
+            totalCostIfZero += cost;
+         }
+      }
+   }
+   
+   // Ajout du coût du nouveau trade
+   double newTradeCost = lotSize * contractSize * (currentPrice - effectiveZeroPrice);
+   totalCostIfZero += newTradeCost;
+   
+   // Vérification si le capital fixe (MaxAccountBalance) peut couvrir le coût
+   bool canAfford = (totalCostIfZero <= MaxAccountBalance);
+   
+   if(!canAfford)
+   {
+      Print("⛔ Capital de risque atteint : Coût total si prix = ", effectiveZeroPrice, 
+            " serait ", totalCostIfZero, " € > Capital fixe ", MaxAccountBalance, " €");
+   }
+   
+   return canAfford;
+}
+
 //+--------------------------------------------------+
 //| PlaceBuyOrder : Place un ordre pour "signal BUY" |
 //| - Mode normal : utilise BUY_STOP                 |
@@ -1361,15 +1442,27 @@ void PlaceBuyOrder()
    if(MaxLotSizeBuy > 0 && lotBuy > MaxLotSizeBuy)
       lotBuy = MaxLotSizeBuy;
    
+   // Calcul du prix d'ordre prévisionnel
+   double orderPrice;
+   if(!InverserOrdresBuy)
+      orderPrice = NormalizeDouble(ask + DistanceOrderBuy * point, _Digits);
+   else
+      orderPrice = NormalizeDouble(ask - DistanceOrderBuy * point, _Digits);
+   
+   // Vérification de la sécurité du capital
+   if(!CanAffordNextTrade(orderPrice, lotBuy))
+   {
+      Print("⛔ PlaceBuyOrder : Trade refusé par sécurité du capital");
+      return;
+   }
+   
    if(!InverserOrdresBuy)
    {
-      double orderPrice = NormalizeDouble(ask + DistanceOrderBuy * point, _Digits);
       if(!trade.BuyStop(lotBuy, orderPrice, _Symbol))
          Print("Erreur BuyStop (mode normal) : ", trade.ResultRetcode());
    }
    else
    {
-      double orderPrice = NormalizeDouble(ask - DistanceOrderBuy * point, _Digits);
       if(!trade.BuyLimit(lotBuy, orderPrice, _Symbol))
          Print("Erreur BuyLimit (mode inversé) : ", trade.ResultRetcode());
    }
@@ -1393,15 +1486,27 @@ void PlaceSellOrder()
    if(MaxLotSizeSell > 0 && lotSell > MaxLotSizeSell)
       lotSell = MaxLotSizeSell;
    
+   // Calcul du prix d'ordre prévisionnel
+   double orderPrice;
+   if(!InverserOrdresSell)
+      orderPrice = NormalizeDouble(bid - DistanceOrderSell * point, _Digits);
+   else
+      orderPrice = NormalizeDouble(bid + DistanceOrderSell * point, _Digits);
+   
+   // Vérification de la sécurité du capital
+   if(!CanAffordNextTrade(orderPrice, lotSell))
+   {
+      Print("⛔ PlaceSellOrder : Trade refusé par sécurité du capital");
+      return;
+   }
+   
    if(!InverserOrdresSell)
    {
-      double orderPrice = NormalizeDouble(bid - DistanceOrderSell * point, _Digits);
       if(!trade.SellStop(lotSell, orderPrice, _Symbol))
          Print("Erreur SellStop (mode normal) : ", trade.ResultRetcode());
    }
    else
    {
-      double orderPrice = NormalizeDouble(bid + DistanceOrderSell * point, _Digits);
       if(!trade.SellLimit(lotSell, orderPrice, _Symbol))
          Print("Erreur SellLimit (mode inversé) : ", trade.ResultRetcode());
    }
