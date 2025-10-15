@@ -119,8 +119,7 @@ input double BackTestStopThreshold             = -1000.0;         // Arrêt du B
 input int    BackTestSpread                    = 10;              // Spread personnalisé
 
 input string Section_Security                  = "===== Paramètres Sécurité =====";
-input double FixedCapital                      = 0.0;            // Capital fixe (0 = désactivé)
-input double ZeroRiskPrice                     = 0.0;            // Prix point 0 (0 = auto)
+input double ZeroRiskPrice                     = 0.0;            // Prix point 0 (0 = auto, active si > 0)
 
 //+--------------------+
 //| Variables globales |
@@ -1373,16 +1372,16 @@ int CountOpenTrades()
 //+------------------------------------------------------------------+
 //| CanAffordNextTrade : Vérifie si le capital fixe permet un trade  |
 //| Contrôle que tous les trades + le nouveau ne dépassent pas le    |
-//| capital fixe au point 0                                          |
+//| capital fixe au point 0. Utilise MaxAccountBalance comme capital |
 //+------------------------------------------------------------------+
 bool CanAffordNextTrade(double currentPrice, double lotSize)
 {
-   // Si FixedCapital est <= 0, la sécurité est désactivée
-   if(FixedCapital <= 0)
+   // Si ZeroRiskPrice est <= 0, la sécurité est désactivée
+   if(ZeroRiskPrice <= 0)
       return true;
    
    // Calcul du prix effectif du point 0
-   double effectiveZeroPrice = (ZeroRiskPrice <= 0) ? 0.01 : ZeroRiskPrice;
+   double effectiveZeroPrice = ZeroRiskPrice;
    if(currentPrice <= effectiveZeroPrice)
       return false;
    
@@ -1413,13 +1412,13 @@ bool CanAffordNextTrade(double currentPrice, double lotSize)
    double newTradeCost = lotSize * contractSize * (currentPrice - effectiveZeroPrice);
    totalCostIfZero += newTradeCost;
    
-   // Vérification si le capital fixe peut couvrir le coût
-   bool canAfford = (totalCostIfZero <= FixedCapital);
+   // Vérification si le capital fixe (MaxAccountBalance) peut couvrir le coût
+   bool canAfford = (totalCostIfZero <= MaxAccountBalance);
    
    if(!canAfford)
    {
       Print("⛔ Capital de risque atteint : Coût total si prix = ", effectiveZeroPrice, 
-            " serait ", totalCostIfZero, " € > Capital fixe ", FixedCapital, " €");
+            " serait ", totalCostIfZero, " € > Capital fixe ", MaxAccountBalance, " €");
    }
    
    return canAfford;

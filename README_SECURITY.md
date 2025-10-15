@@ -11,14 +11,14 @@ Une nouvelle fonction de sécurité qui protège votre capital en empêchant l'o
 Dans les paramètres du robot, configurez :
 
 ```
-FixedCapital = 1000.0     // Votre capital fixe en €
-ZeroRiskPrice = 50.0      // Le prix "point 0" en €
+MaxAccountBalance = 1000.0    // Votre capital fixe en € (paramètre existant)
+ZeroRiskPrice = 50.0          // Le prix "point 0" en € (active la sécurité)
 ```
 
 ### Désactivation
 
 ```
-FixedCapital = 0.0        // Désactive la sécurité
+ZeroRiskPrice = 0.0           // Désactive la sécurité
 ```
 
 ## 📚 Documentation Complète
@@ -32,8 +32,8 @@ FixedCapital = 0.0        // Désactive la sécurité
 ## 💡 Exemple Simple
 
 **Vous avez** :
-- Capital fixe : 1000€
-- Prix point 0 : 100€
+- Capital fixe : 1000€ (MaxAccountBalance)
+- Prix point 0 : 100€ (ZeroRiskPrice)
 - 3 positions ouvertes qui coûteraient 800€ si le prix descendait à 100€
 
 **Nouveau trade** : coûterait 300€ à 100€
@@ -43,7 +43,7 @@ FixedCapital = 0.0        // Désactive la sécurité
 ## ⚙️ Comment ça marche ?
 
 1. Avant chaque achat, le robot calcule le coût total si le prix descendait au "point 0"
-2. Si ce coût dépasse votre capital fixe → Trade refusé
+2. Si ce coût dépasse votre capital fixe (MaxAccountBalance) → Trade refusé
 3. Sinon → Trade autorisé
 
 ## 🎯 Avantages
@@ -53,6 +53,7 @@ FixedCapital = 0.0        // Désactive la sécurité
 - ✅ Compatible avec les stratégies de grille
 - ✅ Désactivable à tout moment
 - ✅ Messages d'alerte clairs
+- ✅ Utilise le paramètre MaxAccountBalance existant (pas de duplication)
 
 ## 📞 Support
 

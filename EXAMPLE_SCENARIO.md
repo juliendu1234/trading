@@ -2,7 +2,7 @@
 
 ## Configuration
 ```
-FixedCapital = 1000.0 €
+MaxAccountBalance = 1000.0 €  (paramètre existant utilisé comme capital fixe)
 ZeroRiskPrice = 50.0 €
 LotSizeBuy = 0.01
 ```
@@ -71,7 +71,7 @@ Total : 750 + 650 + 550 + 450 + 350 + 250 = 3000 €
 
 ### Configuration
 ```
-FixedCapital = 0.0 €  (désactivé)
+ZeroRiskPrice = 0.0  (désactivé)
 ```
 
 ### Résultat
@@ -101,7 +101,7 @@ Prix de l'actif
 │
 │   50€  ═══════ ZeroRiskPrice (Point 0)
 │              Si le prix descend ici :
-│              Perte totale = 3000 € > Capital fixe (1000 €)
+│              Perte totale = 3000 € > MaxAccountBalance (1000 €)
 │
 └────────────────────────────────────────────────
 ```
@@ -111,9 +111,10 @@ Prix de l'actif
 ## Interprétation
 
 La fonction de sécurité garantit que :
-- ✅ Vous ne perdrez jamais plus que votre `FixedCapital`
-- ✅ Si le prix descend au `ZeroRiskPrice`, votre perte maximale = `FixedCapital`
+- ✅ Vous ne perdrez jamais plus que votre `MaxAccountBalance`
+- ✅ Si le prix descend au `ZeroRiskPrice`, votre perte maximale = `MaxAccountBalance`
 - ✅ Les trades sont automatiquement bloqués quand le risque devient trop élevé
 - ✅ Vous gardez le contrôle avec la possibilité de désactiver cette fonction
+- ✅ Utilise le paramètre `MaxAccountBalance` existant, pas de duplication
 
 C'est exactement ce que vous vouliez : une sécurité par rapport à un "point 0" et à un "Capital Fixe" !

@@ -5,9 +5,10 @@
 ### 1. Nouveaux paramètres d'entrée (lignes 121-123)
 ```mql5
 input string Section_Security                  = "===== Paramètres Sécurité =====";
-input double FixedCapital                      = 0.0;            // Capital fixe (0 = désactivé)
-input double ZeroRiskPrice                     = 0.0;            // Prix point 0 (0 = auto)
+input double ZeroRiskPrice                     = 0.0;            // Prix point 0 (0 = auto, active si > 0)
 ```
+
+**Note** : Le paramètre `MaxAccountBalance` existant est utilisé comme capital fixe.
 
 ### 2. Déclarations de fonctions (lignes 33-34)
 ```mql5
@@ -22,9 +23,9 @@ Fonction helper qui compte le nombre total de positions ouvertes pour le robot.
 **Objectif** : Vérifier si un nouveau trade peut être ouvert sans dépasser le capital fixe
 
 **Logique** :
-- Si `FixedCapital <= 0` → Sécurité désactivée, retourne `true`
-- Calcule le prix effectif du "point 0" (utilise `ZeroRiskPrice` ou 0.01 par défaut)
-- Si `currentPrice <= effectiveZeroPrice` → Retourne `false` (prix déjà au point 0)
+- Si `ZeroRiskPrice <= 0` → Sécurité désactivée, retourne `true`
+- Utilise `ZeroRiskPrice` comme prix du "point 0"
+- Si `currentPrice <= ZeroRiskPrice` → Retourne `false` (prix déjà au point 0)
 - Récupère la taille du contrat de l'actif
 - Calcule le coût total si le prix descendait au point 0 :
   ```
@@ -32,7 +33,7 @@ Fonction helper qui compte le nombre total de positions ouvertes pour le robot.
     coût = volume × contractSize × (prixOuverture - prixPoint0)
   ```
 - Ajoute le coût du nouveau trade prévu
-- Compare le coût total avec `FixedCapital`
+- Compare le coût total avec `MaxAccountBalance` (capital fixe existant)
 - Affiche un message d'alerte si le capital serait dépassé
 
 ### 5. Intégration dans PlaceBuyOrder (lignes 1446-1458)
@@ -71,23 +72,25 @@ if(!CanAffordNextTrade(orderPrice, lotSell))
 
 ## Statistiques des modifications
 
-- **Lignes ajoutées** : 110
+- **Lignes ajoutées** : ~105
 - **Lignes modifiées** : 4
 - **Nouvelles fonctions** : 2 (CanAffordNextTrade, CountOpenTrades)
-- **Nouveaux paramètres** : 2 (FixedCapital, ZeroRiskPrice)
+- **Nouveaux paramètres** : 1 (ZeroRiskPrice)
+- **Paramètres réutilisés** : 1 (MaxAccountBalance comme capital fixe)
 
 ## Compatibilité
 
-- ✅ Rétrocompatible : Par défaut, `FixedCapital = 0.0` désactive la sécurité
+- ✅ Rétrocompatible : Par défaut, `ZeroRiskPrice = 0.0` désactive la sécurité
 - ✅ Pas de modification des fonctionnalités existantes
+- ✅ Utilise le paramètre `MaxAccountBalance` existant
 - ✅ Ajout transparent qui peut être activé/désactivé à volonté
 
 ## Tests recommandés
 
-1. **Test avec sécurité désactivée** (`FixedCapital = 0.0`)
+1. **Test avec sécurité désactivée** (`ZeroRiskPrice = 0.0`)
    - Le robot doit fonctionner comme avant
 
-2. **Test avec sécurité activée** (`FixedCapital = 1000.0`, `ZeroRiskPrice = 100.0`)
+2. **Test avec sécurité activée** (`MaxAccountBalance = 1000.0`, `ZeroRiskPrice = 100.0`)
    - Le robot doit refuser les trades qui dépasseraient le capital fixe
    - Vérifier les messages d'alerte dans les logs
 

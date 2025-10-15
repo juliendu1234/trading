@@ -8,12 +8,13 @@ La fonction de sécurité `CanAffordNextTrade()` a été ajoutée pour protéger
 
 ### Paramètres
 
-- **FixedCapital** (Capital Fixe) : Le montant maximum que vous êtes prêt à risquer (par exemple 1000€)
-  - Valeur par défaut : `0.0` (désactivé)
-  - Si `FixedCapital > 0`, la sécurité est activée
+- **MaxAccountBalance** (Solde maximum du compte) : Le capital fixe que vous êtes prêt à risquer (par exemple 1000€)
+  - Valeur par défaut : `1000.0`
+  - Ce paramètre existait déjà et est maintenant utilisé par la fonction de sécurité
 
 - **ZeroRiskPrice** (Prix Point 0) : Le prix auquel votre compte serait à zéro
-  - Valeur par défaut : `0.0` (utilise 0.01 automatiquement)
+  - Valeur par défaut : `0.0` (désactivé)
+  - Si `ZeroRiskPrice > 0`, la sécurité est activée
   - Si le prix atteint ce niveau, vous ne perdriez pas plus que votre capital fixe
 
 ### Comment ça marche ?
@@ -24,8 +25,8 @@ La fonction de sécurité `CanAffordNextTrade()` a été ajoutée pour protéger
    - La somme totale de ces coûts
 
 2. **Vérification** :
-   - Si `coût total ≤ FixedCapital` → ✅ Trade autorisé
-   - Si `coût total > FixedCapital` → ❌ Trade refusé
+   - Si `coût total ≤ MaxAccountBalance` → ✅ Trade autorisé
+   - Si `coût total > MaxAccountBalance` → ❌ Trade refusé
 
 3. **Protection** :
    - Empêche l'ouverture de positions qui dépasseraient votre capital fixe
@@ -34,14 +35,14 @@ La fonction de sécurité `CanAffordNextTrade()` a été ajoutée pour protéger
 ## Exemple d'utilisation
 
 ### Scénario
-- Vous avez 1000€ sur votre compte de trading
+- Vous avez 1000€ sur votre compte de trading (MaxAccountBalance = 1000.0)
 - Vous voulez garder toujours 1000€ et récupérer les gains quotidiennement
 - Vous définissez le prix point 0 à 100€ (par exemple)
 
 ### Configuration
 ```
-FixedCapital = 1000.0
-ZeroRiskPrice = 100.0
+MaxAccountBalance = 1000.0  // Capital fixe (paramètre existant)
+ZeroRiskPrice = 100.0       // Active la sécurité
 ```
 
 ### Fonctionnement
@@ -78,12 +79,13 @@ ou
 
 Pour désactiver la sécurité, définissez simplement :
 ```
-FixedCapital = 0.0
+ZeroRiskPrice = 0.0
 ```
 
 ## Notes importantes
 
-- Cette fonction protège uniquement contre le risque de baisse de prix jusqu'au "prix point 0"
+- Cette fonction utilise le paramètre `MaxAccountBalance` existant comme capital fixe
+- Elle protège uniquement contre le risque de baisse de prix jusqu'au "prix point 0"
 - Elle ne remplace pas un stop-loss traditionnel
 - Elle est particulièrement utile pour les stratégies de grille (grid trading)
 - Le calcul est effectué en temps réel avant chaque ordre
